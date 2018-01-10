@@ -57,7 +57,7 @@ class ann:
 	def deriv(self,z):
 		return z*(1-z)
 
-	def variable_initializer(self, lam = 0.03, iterations = 50000):
+	def variable_initializer(self):
 		m = self.mtrain
 		X = self.train_images.reshape((m,self.train_images[0].shape[0]*self.train_images[0].shape[1]))
 		y = np.zeros(shape=(m,10))
@@ -70,9 +70,32 @@ class ann:
 		self.train_labels = y
 		self.mtrain = m
 		return theta1, theta2
+
+	def train(self, theta1 , theta2, lam = 0.03, iterations = 50000):
+		X = self.train_images
+		y = self.train_labels
+		m = self.mtrain
+		for i in xrange(iterations):
+			# Forward propagation
+			a1 = X
+			z1 = X.dot(theta1)
+			a2 = self.activation_fn(z1)
+			z2 = z2.dot(theta2)
+			a3 = self.activation_fn(z2)
+			
+			#Back propagation getting delta
+			error_2 = a3 - y
+			delta_2 = error_2*deriv(a3)
+			error_1 = delta_2.dot(theta2.T)
+			delta_2 = error_1*deriv(a2)
+
+			#updating theta
+			theta2 -= a2.T.dot(delta_2)*lam
+			theta1 -= a1.T.dot(delta_1)*lam
+		return theta1, theta2
 		
 if __name__ == "__main__":
 	trainDatasetLoc = '/home/kauzi/Documents/EveryMLAlgoNumpy/MNIST/Train/'
 	#testDatasetLoc = '/home/kauzi/Documents/EveryMLAlgoNumpy/MNIST/Test/'
 	obj = ann(trainloc = trainDatasetLoc, mtrain = 5000)
-	theta1, theta2 = obj.variable_initializer(lam = 0.01, iterations = 50000)
+	theta1, theta2 = obj.variable_initializer()
