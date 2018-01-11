@@ -9,10 +9,13 @@
 import numpy as np
 import struct as st
 import random
+
 class ann:
 	train_labels = 0
 	train_images = 0
 	mtrain = 60000
+	test_labels = 0
+	test_images = 0
 	theta1 = 0
 	theta2 = 0
 	theta1 = 0
@@ -34,22 +37,6 @@ class ann:
 		nLabels = st.unpack('>I',train_labelsfile.read(4))[0]
 		nBytesTotal = mtrain*1
 		self.train_labels = np.asarray(st.unpack('>' + 'B'*nBytesTotal, train_labelsfile.read(nBytesTotal))).reshape((mtrain,1))
-		"""
-		filename = {'images' : testloc + 't10k-images.idx3-ubyte' ,'labels' : trainloc + 't10k-labels.idx1-ubyte'}
-		test_imagesfile = open(filename['images'],'rb')
-		test_imagesfile.seek(1)
-		magic = st.unpack('>4B',test_imagesfile.read(4))
-		nImg = st.unpack('>I',test_imagesfile.read(4))[0] 
-		nR = st.unpack('>I',test_imagesfile.read(4))[0] 
-		nC = st.unpack('>I',test_imagesfile.read(4))[0] 
-		nBytesTotal = nImg*nR*nC*1 
-		self.test_images = np.asarray(st.unpack('>'+'B'*nBytesTotal,test_imagesfile.read(nBytesTotal))).reshape((nImg,nR,nC))
-		test_labelsfile = open(filename['labels'],'rb')
-		test_labelsfile.seek(1)
-		magic = st.unpack('>4B',test_labelsfile.read(4))
-		nLabels = st.unpack('>I',test_labelsfile.read(4))[0]
-		nBytesTotal = nLabels*1
-		self.test_labels = np.asarray(st.unpack('>' + 'B'*nLabels, test_labelsfile.read(nLabels))).reshape((nLabels,1)) """
 
 	def activation_fn(self, z):
 		return 1/(1+np.exp(-z))
@@ -65,11 +52,19 @@ class ann:
 			temp = self.train_labels[i][0]
 			y[i][temp] = 1
 		theta1 = np.random.random((X.shape[1],30))
-		theta2 = np.random.random((theta1.shape[0],y.shape[1]))
+		theta2 = np.random.random((theta1.shape[1],y.shape[1]))
 		self.train_images = X
 		self.train_labels = y
 		self.mtrain = m
 		return theta1, theta2
+
+	def forward_prop(self, X, theta1, theta2):
+		a1 = X
+		z1 = a1.dot(theta1)
+		a2 = self.activation_fn(z1)
+		z2 = a2.dot(theta2)
+		a3 = self.activation_fn(z2)
+		return a3
 
 	def train(self, theta1 , theta2, lam = 0.03, iterations = 50000):
 		X = self.train_images
@@ -80,22 +75,61 @@ class ann:
 			a1 = X
 			z1 = X.dot(theta1)
 			a2 = self.activation_fn(z1)
-			z2 = z2.dot(theta2)
+			z2 = a2.dot(theta2)
 			a3 = self.activation_fn(z2)
-			
+
 			#Back propagation getting delta
 			error_2 = a3 - y
-			delta_2 = error_2*deriv(a3)
-			error_1 = delta_2.dot(theta2.T)
-			delta_2 = error_1*deriv(a2)
+			delta_2 = error_2*self.deriv(a3)
+			error_1 = error_2.dot(theta2.T)
+			delta_1 = error_1*self.deriv(a2)
 
 			#updating theta
 			theta2 -= a2.T.dot(delta_2)*lam
 			theta1 -= a1.T.dot(delta_1)*lam
+
+			if i%100 == 0:
+				val = self.forward_prop(X[0],theta1, theta2)
+				for i in range(0,len(val)):
+					val[i] = round(val[i])
+				print i/100,':'
+				print val 
+				print y[0]
+
 		return theta1, theta2
-		
+
+	def preptest(self, test_set_loc, test_for = 100):
+		filename = {'images' : test_set_loc + 't10k-images.idx3-ubyte' ,'labels' : test_set_loc + 't10k-labels.idx1-ubyte'}
+		test_imagesfile = open(filename['images'],'rb')
+		test_imagesfile.seek(0)
+		magic = st.unpack('>4B',test_imagesfile.read(4))
+		nImg = st.unpack('>I',test_imagesfile.read(4))[0] 
+		nR = st.unpack('>I',test_imagesfile.read(4))[0] 
+		nC = st.unpack('>I',test_imagesfile.read(4))[0] 
+		nBytesTotal = test_for*nR*nC*1 
+		self.test_images = np.asarray(st.unpack('>'+'B'*nBytesTotal,test_imagesfile.read(nBytesTotal))).reshape((test_for,nR,nC))
+		test_labelsfile = open(filename['labels'],'rb')
+		test_labelsfile.seek(0)
+		magic = st.unpack('>4B',test_labelsfile.read(4))
+		nLabels = st.unpack('>I',test_labelsfile.read(4))[0]	
+		nBytesTotal = test_for*1
+		self.test_labels = np.asarray(st.unpack('>' + 'B'*test_for, test_labelsfile.read(nBytesTotal))).reshape((test_for,1))
+
+	def initialize_test(self, m):
+		X = self.test_images.reshape((m,self.test_images[0].shape[0]*self.test_images[0].shape[1]))
+		self.test_images = X
+
+	def test(self, test_set_loc, theta1, theta2, test_for = 100):
+		self.preptest(test_set_loc, test_for)
+		self.initialize_test(test_for)
+		print self.test_images.shape
+		print self.test_labels[0:5]
+		print self.forward_prop(self.test_images, theta1, theta2)[0:5]
+
 if __name__ == "__main__":
 	trainDatasetLoc = '/home/kauzi/Documents/EveryMLAlgoNumpy/MNIST/Train/'
-	#testDatasetLoc = '/home/kauzi/Documents/EveryMLAlgoNumpy/MNIST/Test/'
-	obj = ann(trainloc = trainDatasetLoc, mtrain = 5000)
+	testDatasetLoc = '/home/kauzi/Documents/EveryMLAlgoNumpy/MNIST/Test/'
+	obj = ann(trainloc = trainDatasetLoc, mtrain = 10000)
 	theta1, theta2 = obj.variable_initializer()
+	obj.train(theta1, theta2, lam = 0.1, iterations = 1500)
+	obj.test(testDatasetLoc, theta1, theta2, 100)
