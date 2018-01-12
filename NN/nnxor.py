@@ -51,7 +51,7 @@ class neuralNetwork:
 			a3 = self.activationfn(z2)
 			error2 = a3 - self.y
 			delta2 = error2*(a3*(1-a3))
-			delta1 = (delta2.dot(theta2.T))*(a2*(1-a2))
+			delta1 = (error2.dot(theta2.T))*(a2*(1-a2))
 			theta2 -= a2.T.dot(delta2)*lam
 			theta1 -= a1.T.dot(delta1)*lam
 			if i%10000 == 0:
