@@ -3,7 +3,7 @@
 	2 layered neural network architecture:
 	Layers		No. of perceptrons
 	Input layer:	784
-	Hidden layer:	300
+	Hidden layer:	60
 	Output layer:	10
 """
 import numpy as np
@@ -27,7 +27,6 @@ class ann:
 		nC = st.unpack('>I',train_imagesfile.read(4))[0] 
 		nBytesTotal = mtrain*nR*nC*1
 		self.train_images = 255 - np.asarray(st.unpack('>'+'B'*nBytesTotal,train_imagesfile.read(nBytesTotal))).reshape((mtrain,nR,nC))
-		print self.train_images[0:1,:]
 		train_labelsfile = open(filename['labels'],'rb')
 		train_labelsfile.seek(0)
 		magic = st.unpack('>4B',train_labelsfile.read(4))
@@ -35,11 +34,15 @@ class ann:
 		nBytesTotal = mtrain*1
 		self.train_labels = np.asarray(st.unpack('>' + 'B'*nBytesTotal, train_labelsfile.read(nBytesTotal))).reshape((mtrain,1))
 
-	def activation_fn(self, z):
-		return 1/(1+np.exp(-z))
+	def softmax(self, x):
+		exp = np.exp(x)
+		return exp/np.sum(exp, axis=1, keepdims=True).reshape((exp.shape[0],1))
 
-	def deriv(self,z):
-		return np.multiply(z, 1-z)
+	def activation_fn(self, x, deriv = False):
+		if(deriv):
+			return (1/(1+np.exp(-x)))
+		else:
+			return np.log(1+np.exp(x))
 
 	def variable_initializer(self):
 		m = self.mtrain
@@ -50,9 +53,9 @@ class ann:
 			temp = self.train_labels[i][0]
 			y[i][temp] = 1
 		np.random.seed(0)
-		theta1 = np.random.random((60,X.shape[1]))
-		theta2 = np.random.random((y.shape[1],theta1.shape[0]+1))
-		self.train_images = X
+		theta1 = np.random.random((60,X.shape[1]))*0.01
+		theta2 = np.random.random((y.shape[1],theta1.shape[0]+1))*0.01
+		self.train_images = X/255
 		self.train_labels = y
 		self.mtrain = m
 		return (theta1, theta2)
@@ -69,7 +72,7 @@ class ann:
 		z1[:,1:] = temp
 		a2 = self.activation_fn(z1)
 		z2 = a2.dot(theta2.T)
-		h = self.activation_fn(z2)
+		h = self.softmax(z2)
 		return h
 
 	def cost_function(self, X, y, theta1, theta2):
@@ -88,7 +91,6 @@ class ann:
 		np.set_printoptions(formatter = {'float_kind':'{:25f}'.format})
 		temp1 = 0
 		temp2 = 0
-	#	print theta1, theta2
 		min_j = 999999
 		stab_th_1 = 0
 		stab_th_2 = 0
@@ -98,13 +100,13 @@ class ann:
 			temp = a1.dot(theta1.T)
 			z1 = np.ones((temp.shape[0],temp.shape[1]+1))
 			z1[:,1:] = temp
-			a2 = self.activation_fn(z1)
+			a2 = self.activation_fn(z1, deriv = False)
 			z2 = a2.dot(theta2.T)
-			a3 = self.activation_fn(z2)
-
+			a3 = self.softmax(z2)
+		
 			#Back propagation getting delta
 			error_2 = a3 - y
-			error_1 = np.multiply(error_2.dot(theta2),self.deriv(a2))
+			error_1 = np.multiply(error_2.dot(theta2),self.activation_fn(z1,deriv= True))
 			error_1 = error_1[:,1:]
 			delta_2 = error_2.T.dot(a2)
 			delta_1 = error_1.T.dot(a1)
@@ -115,6 +117,9 @@ class ann:
 			if i%100 == 0:
 				J = self.cost_function(X, y, theta1, theta2)
 				min_j = min(min_j, J)
+				print i/100 + 1;
+				print self.forward_prop(X[0:1,:],theta1, theta2)
+				print y[0:1,:]
 				if min_j == J:
 					name = 'Para_'+str(i//100+1) +'_1'
 					name2 = 'Para_'+str(i//100+1) + '_2'
@@ -122,7 +127,9 @@ class ann:
 					np.save(name2, theta2.astype(np.float))
 					stab_th_1 = theta1
 					stab_th_2 = theta2
-				print i/100 + 1, J, min_j
+				temp1 = theta1
+				temp2 = theta2
+				print J, min_j
 
 		return stab_th_1, stab_th_2
 
@@ -152,8 +159,8 @@ class ann:
 		self.preptest(test_set_loc, test_for)
 		self.initialize_test(test_for)
 		#print self.test_images.shape
-		print self.test_labels[0:1]
-		y = self.forward_prop(self.test_images[0:1], theta1, theta2)
+		print self.test_labels[0:5]
+		y = self.forward_prop(self.test_images[0:5], theta1, theta2)
 		for i in y:
 			for j in range(0,len(i)):
 				i[j] = round(i[j])
@@ -163,8 +170,8 @@ if __name__ == "__main__":
 	np.set_printoptions(suppress=True)
 	trainDatasetLoc = '/home/kauzi/Documents/EveryMLAlgoNumpy/MNIST/Train/'
 	testDatasetLoc = '/home/kauzi/Documents/EveryMLAlgoNumpy/MNIST/Test/'
-	obj = ann(trainloc = trainDatasetLoc, mtrain = 25000)
+	obj = ann(trainloc = trainDatasetLoc, mtrain = 10000)
 	theta1, theta2 = obj.variable_initializer()
-	obj.train(theta1, theta2, lam = 0.03, iterations = 15000)
-#	theta1, theta2 = obj.extract_params('Para1_119', 'Para2_119')
-#	obj.test(testDatasetLoc, theta1, theta2, 100)
+#	obj.train(theta1, theta2, lam = 0.03, iterations = 15000)
+	theta1, theta2 = obj.extract_params('Para_4_1', 'Para_4_2')
+	obj.test(testDatasetLoc, theta1, theta2, 100)
