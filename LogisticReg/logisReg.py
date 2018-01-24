@@ -1,9 +1,16 @@
 import numpy as np
 import pandas as pd
 import math
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 def sigmoid(z):
 	return 1/(1+(math.e)**(-z))
-def train(X, y, theta, learning_rate = 0.01, iterations = 1500):
+def visualize(X1, X2, y):
+	fig=plt.figure()
+	ax = Axes3D(fig)
+	ax.scatter(xs = X1, ys = X2, zs = y, label = 'curve')
+	plt.show()
+def train(X, y, theta, learning_rate = 0.01, iterations = 1500, vis = True):
 	m = y.shape[0]
 	X_0 = np.zeros(shape=(m,1))
 	X_0[:,0] = X[:,0]
@@ -12,6 +19,7 @@ def train(X, y, theta, learning_rate = 0.01, iterations = 1500):
 	X_2 = np.zeros(shape=(m,1))
 	X_2[:,0] = X[:,2]
 	#print X_2
+	visualize(X_1, X_2, y)
 	for i in xrange(iterations):
 		h = sigmoid(X.dot(theta)) - y
 		grad0 =  ((learning_rate)*(1.0/m)*((X_0*h).sum(axis=0)))
@@ -33,6 +41,6 @@ if __name__ == "__main__":
 	learning_rate = 0.05
 	theta = np.ones(shape=(3,1))
 	iterations = 1500
-	theta = train(X, y, theta, learning_rate, iterations)
+	theta = train(X, y, theta, learning_rate, iterations, True)
 	x = np.array([1,2.7810836,2.550537003])
 	print round(sigmoid(x.dot(theta))[0])
