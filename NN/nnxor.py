@@ -7,6 +7,8 @@
 """
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 class neuralNetwork:
 	X = 0
 	y = 0
@@ -28,6 +30,16 @@ class neuralNetwork:
 	# Activation function
 	def activationfn(self, z):
 		return 1/(1+(np.exp(-z)))
+	
+	#visualize
+	def visualize(self, X1, X2, y):
+		fig=plt.figure()
+		ax = Axes3D(fig)
+		print X1
+		print X2
+		print y
+		ax.scatter(xs = X1, ys = X2, zs = y, label = 'curve')
+		plt.show()
 
 	# Forward propogation
 	def forwardProp(self, X, theta1, theta2):
@@ -68,5 +80,6 @@ class neuralNetwork:
 
 if __name__ == "__main__":
 	nn = neuralNetwork('XOR.csv')
+	nn.visualize(nn.X[:,0], nn.X[:,1], nn.y)
 	nn.train(nn.theta1, nn.theta2, 0.1, 60000)
 	nn.customtest(nn.theta1, nn.theta2)
